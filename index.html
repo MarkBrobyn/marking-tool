@@ -1,0 +1,308 @@
+<!--
+  2023-01-17
+  https://www.w3schools.com/howto/howto_js_copy_clipboard.asp
+  https://www.w3schools.com/jsref/prop_element_classlist.asp
+  2023-01-29
+  https://stackoverflow.com/questions/8260156/how-do-i-create-dynamic-variable-names-inside-a-loop
+  https://stackoverflow.com/questions/42799142/calling-anonymous-function-in-html
+  https://developer.mozilla.org/en-US/docs/Web/API/Element/nextElementSibling
+  https://developer.mozilla.org/en-US/docs/Web/API/Node/insertBefore
+TODO:
+  - select unit to mark
+  - copy button >> attach to all text areas
+  - mark == 0 >>  ...
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marking</title>
+    <style>
+      .home_nav {
+        display: none;
+      }
+
+      * {
+        font-family: sans-serif;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      body > header {
+        color: rgb(40, 40, 40);
+        background-color: hsl(195, 55%, 70%);
+        font-size: 2em;
+        /* width: 100%; */
+        padding: 0.2em;
+        padding-left: 0.3em;
+      }
+
+      a {
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 1.2em;
+        border: 1px gray solid;
+        padding: 0.3em;
+        border-radius: 4px;
+        margin: 0.1em 0.1em 0.1em 0;
+        display: inline-block;
+      }
+
+      section > header {
+        /* background-color: lightyellow; */
+        font-size: 0.7em;
+        font-weight: bold;
+        width: 100%;
+        padding-left: 0.2em;
+        padding-top: 0.1em;
+        padding-bottom: 0.05em;
+        margin-left: -0.5em;
+        color: gray;
+        /* border-top: 2px grey solid; */
+        /* margin-top: 1px; */
+      }
+
+      section {
+        /* border-bottom: 1px grey solid; */
+        padding-left: 0.3em;
+        padding-bottom: 0.1em;
+        font-weight:bold;
+      }
+
+      section#marks.marks {
+        background-color: hsl(195, 55%, 90%);
+        margin: 0;
+        padding: 0.5em 2.0em;
+        font-size: 1.4em;       
+      }
+
+      section#marks.marks span {
+        margin-right: 0.5em;
+      }
+
+      .float_right {
+        float: right;
+      }
+
+      .unit {
+        background-color: hsl(195, 55%, 80%);
+        margin: 0;
+        padding: 0.2em 1.0em;
+      }
+
+      .marked {
+        background-color: pink;
+      }
+
+      .commented {
+        background-color: lightblue;
+      }
+
+      .case, .comment {
+        /* background-color: aliceblue; */
+        padding-left: 1em;
+        cursor: pointer;
+        font-weight: normal;
+      }
+
+      .commentGroup {
+        margin-top: 0.2em;
+        margin-left: 0.5em;
+      }
+
+      .case:hover, .comment:hover {
+        color: blue;
+        /* font-weight: bold; */
+        background-color: lightgrey;
+      }
+
+    </style>
+  </head>
+
+  <body>
+    <header id="headerMarking">
+      Marking
+      <nav class="home_nav float_right">
+        <!-- Working on... | Count Up/Down | Time -->
+      </nav>
+    </header>
+    <section id="marks" class="marks">
+      Mark: <span id="markMark"></span>
+      Total: <span id="markTotal"></span>
+      Grade: <span id="markGrade"></span>%
+    </section>
+    <section id="sections" class="sections">
+
+    </section>
+    <section id="output" class="output">
+      <hr>
+      <span id = "comments">Comments:</span><br>
+      <textarea id="outputText" name="outputText" rows="10" cols="40"></textarea>
+        <button onclick="(function(){ outputCopy('outputText')})()">Copy</button>
+    </section>
+    <script>
+      const marks = {}
+      const TOFIXED = 1
+      const outputText = document.getElementById("outputText")
+      
+      // parse js json file
+      function mark(u) {
+        const unit = u.unit
+        const run = u.run
+        const work = u.work
+        const sections = u.sections
+        const comments = u.comments
+        // coded html elements
+        const sectionsElement = document.getElementById("sections")
+        let section
+        let commentArea
+
+        // set global marks object to hold current marks
+        marks.mark = 0;
+        marks.total = 0;
+        marks.grade = 0;
+        marks.section = {}
+        for(sec in sections) { // sections from JSON object
+          marks.section[sections[sec].sec] = sections[sec].mark
+        }
+        // ----------------------------------------------
+
+        // create document fragment for all sections
+        const df = document.createDocumentFragment()
+        const h = document.createElement("h2")
+        const hm = document.getElementById("headerMarking")
+        const p =  hm.parentNode// pare nt
+        h.classList.add("unit")
+        h.innerText = `Unit: ${unit} (${run}) - ${work}`
+        p.insertBefore(h, hm.nextSibling)
+        //   const parentDiv = document.getElementById("childElement").parentNode;
+        // df.appendChild(h)
+        // section
+        for(let s = 0; s < sections.length; s++) {
+          //marks.section[sections[s].sec] = sections[s].mark
+          section = document.createElement("section")
+          section.innerText = `Section: ${sections[s].sec} (${sections[s].mark}) mark: `
+          currentSectionMark = document.createElement("span")
+          currentSectionMark.id = sections[s].sec
+          currentSectionMark.innerText = marks.section[sections[s].sec]
+          section.appendChild(currentSectionMark)
+          marks.total += sections[s].mark
+          // cases
+          for(let c = 0; c < sections[s].cases.length; c++) {
+            let d = document.createElement("div")
+            d.classList.add("case")
+            d.id = `section${sections[s].sec}${c}` // id
+            // console.log(d.id)
+            d.addEventListener("click", function () {
+              let mark = sections[s].cases[c].mark
+              let id = d.id
+              let comment = sections[s].cases[c].comment[0]
+              let sec = sections[s].sec            
+              marksChange(mark,id,`${mark} ${comment}`,sec,`comments${sections[s].sec}`)
+            })
+            d.innerText = `${sections[s].cases[c].case} (${sections[s].cases[c].mark})`
+            section.appendChild(d)
+          }
+          marks.mark= marks.total
+          marks.grade = ((100 / marks.total) * marks.mark).toFixed(TOFIXED)
+          // add comments area to section
+          commentArea = document.createElement("textarea")
+          commentArea.id = `comments${sections[s].sec}`
+          commentArea.cols = 40
+          commentArea.rows = 6
+          let copyButton = document.createElement("button")
+          copyButton.innerText  = "Copy"
+          copyButton.addEventListener("click", function() {
+            outputCopy(`comments${sections[s].sec}`)
+          })
+          section.appendChild(commentArea)
+          section.appendChild(copyButton)
+          df.appendChild(section)
+        }
+        // GENERAL COMMENTS SECTION
+        // add comments section from global // defined above: const comments = u.comments
+        // - json object MUST have comments object
+        // - comments object MUST contain at least one comment
+        let groups = {}
+        let commentsEle = document.getElementById("comments")
+        for(let g in comments) {
+          let ge=`groups${comments[g].group}` // group element dynamic name
+          if(groups[comments[g].group] == undefined) {
+            groups[comments[g].group] = []
+            let gegn = document.createElement("div") // group element group name
+            gegn.innerText = comments[g].group
+            gegn.classList.add("commentGroup")
+            this[ge] = document.createElement("div")
+            this[ge].id = ge 
+            this[ge].appendChild(gegn)
+            commentsEle.appendChild(this[ge])
+          }                            
+          let ce = document.createElement("div")
+          ce.classList.add("comment")
+          ce.innerText = comments[g].comment
+          ce.addEventListener("click", function () {
+            ce.classList.toggle("commented")
+            toggleCommentInOutput(comments[g].comment,"outputText") // comment, textarea
+            })
+          this[ge].appendChild(ce)
+        }
+        sectionsElement.appendChild(df)
+        marksUpdate()
+      }
+
+      function marksUpdate(s) {
+        document.getElementById("markMark").innerText = marks.mark
+        document.getElementById("markTotal").innerText = marks.total
+        document.getElementById("markGrade").innerText = marks.grade
+        if(s == undefined) return
+        document.getElementById(s).innerText = marks.section[s]
+        // console.log(s)
+        // console.log(marks.section[s])
+        // console.log(document.getElementById(s))
+      }
+
+      // mark, element ID, case, section ID
+      function marksChange(m,e,c,s,ta) { // mark,e,c,s,textarea
+        if(document.getElementById(e).classList.contains("marked")) { 
+          marks.mark -= m
+          marks.section[s] -= m
+        }
+        else {
+          marks.mark += m
+          marks.section[s] += m
+        }
+        marks.grade = ((100 / marks.total) * marks.mark).toFixed(TOFIXED)
+        marksUpdate(s) // pass section id to update section mark 
+        toggleMarked(e)
+        toggleCommentInOutput(c,ta) // comment, textarea
+      }
+
+      function toggleCommentInOutput(t,ta) { // text, textarea
+        let outputText = document.getElementById(ta)
+        if(outputText.value.includes(t)) {
+          outputText.value = outputText.value.replace(t,"")
+        }
+        else {
+          outputText.value += t
+        }
+      }
+
+      function outputCopy(s) { // section
+        let copyText = document.getElementById(s);
+console.log(s)
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); // For mobile devices
+      }
+
+      function toggleMarked(e) {
+        document.getElementById(e).classList.toggle("marked");
+      }
+
+      //console.log(marks)
+</script>
+    <script src="ITP1-1.js"></script>
+  </body>
+</html>
